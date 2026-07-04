@@ -26,7 +26,7 @@ public final class CommandRegistry {
 	public void registerAll(Commands registrar) {
 		for (TNexusCommand command : commands) {
 			LiteralCommandNode<CommandSourceStack> node = command.build();
-			Set<String> registredLabels = registrar.register(
+			Set<String> registeredLabels = registrar.register(
 				node,
 				command.description(),
 				command.aliases()
@@ -34,13 +34,13 @@ public final class CommandRegistry {
 
 			String label = node.getLiteral();
 
-			if (!registredLabels.contains(label)) {
+			if (!registeredLabels.contains(label)) {
 				this.logger.error("Failed to register command: /{}", label);
 				continue;
 			}
 
 			for (String alias : command.aliases()) {
-				if (!registredLabels.contains(alias)) {
+				if (!registeredLabels.contains(alias)) {
 					this.logger.warn(
 						"Alias /{} for /{} was not registered as a plain label; it may already be in use.",
 						alias,
