@@ -28,6 +28,3 @@ replay_pid*
 # OS
 Thumbs.db
 .DS_Store
-
-# Local build number
-.build-number

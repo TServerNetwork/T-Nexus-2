@@ -27,19 +27,23 @@ val versionWithSuffix = if (versionSuffix.isEmpty()) {
 	"$semanticVersion-$versionSuffix"
 }
 
-val buildNumberFile = layout.projectDirectory.file(".build-number").asFile
+val buildNumber = providers.gradleProperty("buildNumber")
+                           .orElse(providers.environmentVariable("GITHUB_RUN_NUMBER"))
+						   .getOrElse("0")
+						   .trim()
 
-val currentBuildNumber = if (buildNumberFile.exists()) {
-	buildNumberFile.readText()
-	               .trim()
-				   .toIntOrNull()
-				   ?: error(".build-number must contain an integer.")
-} else {
-	0
+require(Regex("""\d+""").matches(buildNumber)) {
+	"buildNumber must be a non-negative integer."
 }
-val buildNumber = currentBuildNumber + 1
 
-val artifactVersion = "$versionWithSuffix-b$buildNumber"
+val isGitHubActions = providers.environmentVariable("GITHUB_ACTIONS")
+                               .map { it.equals("true", ignoreCase = true) }
+							   .getOrElse(false)
+
+val localSuffix = if (isGitHubActions) "" else "-local"
+val artifactVersion = "$versionWithSuffix-b$buildNumber$localSuffix"
+
+version = artifactVersion
 
 repositories {
 	maven {
@@ -56,17 +60,7 @@ java {
 	toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 }
 
-val incrementBuildNumber by tasks.registering {
-	group = "build"
-	description = "Persists the build number used by the generated JAR."
 
-	dependsOn(tasks.named("classes"))
-	outputs.upToDateWhen { false }
-
-	doLast {
-		buildNumberFile.writeText(buildNumber.toString())
-	}
-}
 
 tasks {
 	processResources {
@@ -77,8 +71,6 @@ tasks {
 		}
 	}
 	jar {
-		dependsOn(incrementBuildNumber)
-
 		archiveBaseName.set("T-Nexus")
 		archiveVersion.set(artifactVersion)
 	}
