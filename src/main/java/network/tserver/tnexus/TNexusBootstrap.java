@@ -9,7 +9,7 @@ import network.tserver.tnexus.command.TNexusRootCommand;
 public final class TNexusBootstrap implements PluginBootstrap {
 	@Override
 	public void bootstrap(BootstrapContext context) {
-		CommandRegistry commandRegistry = new CommandRegistry();
+		CommandRegistry commandRegistry = new CommandRegistry(context.getLogger());
 
 		commandRegistry.add(new TNexusRootCommand());
 
