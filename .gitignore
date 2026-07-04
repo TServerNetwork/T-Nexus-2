@@ -1,0 +1,30 @@
+# Gradle
+.gradle/
+build/
+
+# run-paper dev server
+run/
+
+# VS Code Settings
+.vscode/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Eclipse / Java language server
+
+.classpath
+.project
+.settings/
+bin/
+out/
+
+# Java
+*.class
+hs_err_pid*
+replay_pid*
+
+# OS
+Thumbs.db
+.DS_Store
