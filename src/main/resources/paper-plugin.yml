@@ -1,5 +1,5 @@
 name: T-Nexus
-version: "2.0.0-SNAPSHOT"
+version: "${version}"
 main: network.tserver.tnexus.TNexusPlugin
 description: The core plugin for TServerNetwork
 api-version: "26.1.2"
