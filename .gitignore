@@ -1,6 +1,5 @@
 # Gradle
 .gradle/
-build/
 
 # run-paper dev server
 run/

@@ -5,6 +5,8 @@ plugins {
 
 group = "network.tserver"
 
+layout.buildDirectory.set(layout.projectDirectory.dir("out"))
+
 val semanticVersion = providers.gradleProperty("version").get()
 val versionSuffix   = providers.gradleProperty("versionSuffix")
                                .orNull

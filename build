@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+workflow="build.yml"
+branch="master"
+
+if ! command -v gh >/dev/null 2>&1; then
+	echo "GitHub CLI (gh)が見つかりません。" >&2
+	exit 1
+fi
+
+if ! gh auth status >/dev/null 2>&1; then
+	echo "GitHub CLIにログインしていません。\`gh auth login\` を実行してください。" >&2
+	exit 1
+fi
+
+build_number="$(
+	gh run list \
+	   --workflow "$workflow" \
+	   --branch "$branch" \
+	   --status success \
+	   --limit 1 \
+	   --json number \
+	   --jq '.[0].number'
+)"
+
+if [[ ! "$build_number" =~ ^[0-9]+$ ]]; then
+	echo "成功したGitHub Actionsビルドが見つかりませんでした。" >&2
+	exit 1
+fi
+echo "Latest successful Actions build: b${build_number}"
+./gradlew clean build \
+          "-PbuildNumber=${build_number}"
+echo "Local build completed: b${build_number}-local"
