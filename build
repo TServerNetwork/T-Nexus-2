@@ -4,32 +4,119 @@ set -euo pipefail
 
 workflow="build.yml"
 branch="master"
+remote="origin"
+
+run_discovery_attempts=60
+run_discovery_interval=2
+
+die() {
+	echo "$1" >&2
+	exit 1
+}
+
+get_latest_successful_build_number() {
+	gh run list \
+		--workflow "$workflow" \
+		--branch "$branch" \
+		--status success \
+		--limit 1 \
+		--json number \
+		--jq '.[0].number'
+}
+
+get_run_for_commit() {
+	local commit_sha="$1"
+
+	gh run list \
+		--workflow "$workflow" \
+		--commit "$commit_sha" \
+		--limit 1 \
+		--json databaseId,number,status,conclusion \
+		--jq '
+			if length == 0 then
+				""
+			else
+				(
+					.[0]
+					| [
+						.databaseId,
+						.number,
+						.status,
+						(.conclusion // "")
+					]
+					| @tsv
+				)
+			end
+		'
+}
 
 if ! command -v gh >/dev/null 2>&1; then
-	echo "GitHub CLI (gh)が見つかりません。" >&2
-	exit 1
+	die "GitHub CLI (gh)が見つかりません。"
 fi
 
 if ! gh auth status >/dev/null 2>&1; then
-	echo "GitHub CLIにログインしていません。\`gh auth login\` を実行してください。" >&2
-	exit 1
+	die "GitHub CLIにログインしていません。gh auth loginを実行してください。"
 fi
 
-build_number="$(
-	gh run list \
-	   --workflow "$workflow" \
-	   --branch "$branch" \
-	   --status success \
-	   --limit 1 \
-	   --json number \
-	   --jq '.[0].number'
+current_branch="$(git branch --show-current)"
+head_sha="$(git rev-parse HEAD)"
+
+remote_branch_sha="$(
+	git ls-remote "$remote" "refs/heads/$branch" \
+		| awk '{ print $1 }'
 )"
 
-if [[ ! "$build_number" =~ ^[0-9]+$ ]]; then
-	echo "成功したGitHub Actionsビルドが見つかりませんでした。" >&2
-	exit 1
+if [[ -z "$remote_branch_sha" ]]; then
+	die "$remote/$branchのコミットを取得できませんでした。"
 fi
+
+if [[ "$current_branch" == "$branch" && "$head_sha" == "$remote_branch_sha" ]]; then
+	echo "Waiting for Actions run: ${head_sha:0:7}"
+
+	run_info=""
+
+	for ((attempt = 1; attempt <= run_discovery_attempts; attempt++)); do
+		run_info="$(get_run_for_commit "$head_sha")"
+
+		if [[ -n "$run_info" ]]; then
+			break
+		fi
+
+		if ((attempt == 1)); then
+			echo "Actions run has not started yet. Waiting..."
+		fi
+
+		sleep "$run_discovery_interval"
+	done
+
+	if [[ -z "$run_info" ]]; then
+		die "現在のコミットに対応するActions実行が見つかりませんでした。"
+	fi
+
+	IFS=$'\t' read -r run_id build_number run_status run_conclusion <<< "$run_info"
+
+	echo "Actions build found: b${build_number} (${run_status})"
+
+	if [[ "$run_status" != "completed" ]]; then
+		echo "Waiting for Actions build b${build_number}..."
+
+		if ! gh run watch "$run_id" --compact --exit-status; then
+			die "Actions build b${build_number}が失敗しました。"
+		fi
+	elif [[ "$run_conclusion" != "success" ]]; then
+		die "Actions build b${build_number}は成功していません: ${run_conclusion}"
+	fi
+else
+	build_number="$(get_latest_successful_build_number)"
+
+	if [[ ! "$build_number" =~ ^[0-9]+$ ]]; then
+		die "成功したGitHub Actionsビルドが見つかりませんでした。"
+	fi
+fi
+
 echo "Latest successful Actions build: b${build_number}"
+
 ./gradlew clean build \
-          "-PbuildNumber=${build_number}"
+	"-PbuildNumber=${build_number}"
+
 echo "Local build completed: b${build_number}-local"
