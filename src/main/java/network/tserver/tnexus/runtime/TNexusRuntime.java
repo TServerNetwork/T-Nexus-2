@@ -49,4 +49,10 @@ public final class TNexusRuntime {
 
 		return this.config;
 	}
+
+	public void reloadConfig() {
+		TNexusConfig loadedConfig = TNexusConfig.load(this.plugin());
+
+		this.config = loadedConfig;
+	}
 }
