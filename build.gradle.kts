@@ -56,6 +56,7 @@ repositories {
 
 dependencies {
 	compileOnly("io.papermc.paper:paper-api:26.1.2.build.72-stable")
+	compileOnly("com.electronwill.night-config:toml:3.9.0")
 }
 
 java {

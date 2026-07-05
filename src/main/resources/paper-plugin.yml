@@ -2,5 +2,6 @@ name: T-Nexus
 version: "${version}"
 main: network.tserver.tnexus.TNexusPlugin
 bootstrapper: network.tserver.tnexus.TNexusBootstrap
+loader: network.tserver.tnexus.TNexusLoader
 description: The core plugin for TServerNetwork
 api-version: "26.1.2"
