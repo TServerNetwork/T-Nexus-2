@@ -16,7 +16,11 @@ public final class TNexusPlugin extends JavaPlugin {
 	@Override
 	public void onEnable() {
 		this.runtime.start(this);
-		getSLF4JLogger().info("T-Nexus 2 enabled!");
+		getSLF4JLogger().info(
+			"T-Nexus {} enabled! Debug: {}",
+			this.runtime.version(),
+			this.runtime.config().debug()
+		);
 	}
 
 	@Override
