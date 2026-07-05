@@ -31,5 +31,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: T-Nexus-b${{ github.run_number }}
-          path: build/libs/T-Nexus-*.jar
+          path: out/libs/T-Nexus-*.jar
           if-no-files-found: error
