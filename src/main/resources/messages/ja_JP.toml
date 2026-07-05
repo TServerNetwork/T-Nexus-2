@@ -1,0 +1,3 @@
+"tnexus.command.info" = "<gold>T-Nexus</gold> <white><arg:0></white> が稼働しています。"
+"tnexus.command.reload.success" = "<green>設定を再読み込みしました。Debug: <arg:0></green>"
+"tnexus.command.reload.failed" = "<red>設定の再読み込みに失敗しました。</red>"
