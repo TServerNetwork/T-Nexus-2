@@ -8,7 +8,15 @@ import io.papermc.paper.plugin.loader.PluginClasspathBuilder;
 import io.papermc.paper.plugin.loader.PluginLoader;
 import io.papermc.paper.plugin.loader.library.impl.MavenLibraryResolver;
 
+/**
+ * プラグイン生成前に必要なランタイムライブラリを解決します。
+ */
 public final class TNexusLoader implements PluginLoader {
+	/**
+	 * NightConfig 依存関係をプラグインのクラスパスへ追加します。
+	 *
+	 * @param classpathBuilder このプラグイン用の Paper クラスパスビルダー
+	 */
 	@Override
 	public void classloader(PluginClasspathBuilder classpathBuilder) {
 		MavenLibraryResolver resolver = new MavenLibraryResolver();
