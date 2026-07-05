@@ -116,7 +116,31 @@ fi
 
 echo "Latest successful Actions build: b${build_number}"
 
-./gradlew clean build \
-	"-PbuildNumber=${build_number}"
+mode="${1:-build}"
 
-echo "Local build completed: b${build_number}-local"
+if (( $# > 0 )); then
+	shift
+fi
+
+case "$mode" in
+	build)
+		./gradlew clean build \
+			"-PbuildNumber=${build_number}" \
+			"$@"
+
+		echo "Local build completed: b${build_number}-local"
+		;;
+
+	run)
+		echo "Starting local server: b${build_number}-local"
+
+		exec ./gradlew runServer \
+			"-PbuildNumber=${build_number}" \
+			"$@"
+		;;
+
+	*)
+		echo "Usage: ./build [build|run] [Gradle options...]" >&2
+		exit 1
+		;;
+esac
