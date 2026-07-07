@@ -9,7 +9,7 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import network.tserver.tnexus.message.MessageKey;
 import network.tserver.tnexus.runtime.TNexusRuntime;
 
 /**
@@ -54,7 +54,10 @@ public final class TNexusRootCommand implements TNexusCommand {
 	 */
 	private int executeInfo(CommandSourceStack source) {
 		source.getSender().sendMessage(
-			Component.text("T-Nexus " + this.runtime.version() + " is running")
+			Component.translatable(
+				MessageKey.COMMAND_INFO.key(),
+				Component.text(this.runtime.version())
+			)
 		);
 
 		return Command.SINGLE_SUCCESS;
@@ -68,7 +71,7 @@ public final class TNexusRootCommand implements TNexusCommand {
 	 */
 	private int executeReload(CommandSourceStack source) {
 		try {
-			this.runtime.reloadConfig();
+			this.runtime.reload();
 		} catch (RuntimeException exception) {
 			this.runtime.plugin()
 			            .getSLF4JLogger()
@@ -77,9 +80,8 @@ public final class TNexusRootCommand implements TNexusCommand {
 							exception
 						);
 			source.getSender().sendMessage(
-				Component.text(
-					"Failed to reload T-Nexus configuration.",
-					NamedTextColor.RED
+				Component.translatable(
+					MessageKey.COMMAND_RELOAD_FAILED.key()
 				)
 			);
 
@@ -87,9 +89,9 @@ public final class TNexusRootCommand implements TNexusCommand {
 		}
 
 		source.getSender().sendMessage(
-			Component.text(
-				"T-Nexus configuration reloaded. Debug: " + this.runtime.config().debug(),
-				NamedTextColor.GREEN
+			Component.translatable(
+				MessageKey.COMMAND_RELOAD_SUCCESS.key(),
+				Component.text(this.runtime.config().debug())
 			)
 		);
 

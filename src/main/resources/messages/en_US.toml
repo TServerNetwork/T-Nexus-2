@@ -1,0 +1,3 @@
+"tnexus.command.info" = "<gold>T-Nexus</gold> <white><arg:0></white> is running."
+"tnexus.command.reload.success" = "<green>Configuration reloaded. Debug: <arg:0></green>"
+"tnexus.command.reload.failed" = "<red>Failed to reload the configuration.</red>"

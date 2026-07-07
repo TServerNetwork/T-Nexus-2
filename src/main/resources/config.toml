@@ -1,2 +1,5 @@
 # プラグインの追加診断動作を有効にします。
 debug = false
+
+[i18n]
+fallback-locale = "ja_JP"
