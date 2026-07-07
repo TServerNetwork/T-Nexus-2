@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import network.tserver.tnexus.TNexusPlugin;
 import network.tserver.tnexus.config.TNexusConfig;
+import network.tserver.tnexus.message.TNexusMessages;
 
 /**
  * ブートストラップ、プラグインライフサイクル、コマンドで共有する実行時状態を保持します。
@@ -11,6 +12,7 @@ import network.tserver.tnexus.config.TNexusConfig;
 public final class TNexusRuntime {
 	private TNexusPlugin plugin;
 	private TNexusConfig config;
+	private TNexusMessages messages;
 
 	/**
 	 * 有効化中のプラグインを保持し、設定を読み込んでランタイムを開始します。
@@ -24,17 +26,33 @@ public final class TNexusRuntime {
 
 		TNexusPlugin checkedPlugin = Objects.requireNonNull(plugin, "plugin");
 		TNexusConfig loadedConfig  = TNexusConfig.load(checkedPlugin);
+		TNexusMessages loadedMessages = TNexusMessages.load(
+			checkedPlugin,
+			loadedConfig.fallbackLocale()
+		);
+
+		if (!loadedMessages.register()) {
+			throw new IllegalStateException("Failed to register T-Nexus translation source.");
+		}
 
 		this.plugin = checkedPlugin;
 		this.config = loadedConfig;
+		this.messages = loadedMessages;
 	}
 
 	/**
 	 * プラグイン停止時にランタイム状態をクリアします。
 	 */
 	public void stop() {
+		if (this.messages != null && !this.messages.unregister()) {
+			this.plugin()
+				.getSLF4JLogger()
+				.warn("T-Nexus translation source was not registered.");
+		}
+
 		this.plugin = null;
 		this.config = null;
+		this.messages = null;
 	}
 
 	/**
@@ -84,9 +102,43 @@ public final class TNexusRuntime {
 	/**
 	 * ランタイムを維持したまま設定をディスクから再読み込みします。
 	 */
-	public void reloadConfig() {
-		TNexusConfig loadedConfig = TNexusConfig.load(this.plugin());
+	public void reload() {
+		TNexusPlugin plugin = this.plugin();
+
+		TNexusConfig loadedConfig = TNexusConfig.load(plugin);
+		TNexusMessages loadedMessages = TNexusMessages.load(
+			plugin,
+			loadedConfig.fallbackLocale()
+		);
+
+		TNexusMessages currentMessages = this.messages();
+
+		if (!currentMessages.unregister()) {
+			throw new IllegalStateException("Failed to unregister the current T-Nexus translation source.");
+		}
+
+		try {
+			if (!loadedMessages.register()) {
+				throw new IllegalStateException("Failed to register the new T-Nexus translation source.");
+			}
+		} catch (RuntimeException exception) {
+			if (!currentMessages.register()) {
+				plugin.getSLF4JLogger().error("Failed to restore the previous T-Nexus translation source.");
+			}
+
+
+			throw exception;
+		}
 
 		this.config = loadedConfig;
+		this.messages = loadedMessages;
+	}
+
+	public TNexusMessages messages() {
+		if (this.messages == null) {
+			throw new IllegalStateException("T-Nexus messages are not loaded.");
+		}
+
+		return this.messages;
 	}
 }
