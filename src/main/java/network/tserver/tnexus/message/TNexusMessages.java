@@ -1,5 +1,9 @@
 package network.tserver.tnexus.message;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -9,6 +13,8 @@ import java.util.Objects;
 
 import com.electronwill.nightconfig.core.UnmodifiableConfig;
 import com.electronwill.nightconfig.core.file.FileConfig;
+import com.electronwill.nightconfig.toml.TomlParser;
+import com.mojang.brigadier.Message;
 
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.minimessage.translation.MiniMessageTranslationStore;
@@ -56,7 +62,11 @@ public final class TNexusMessages {
 				plugin.saveResource(resourcePath, false);
 			}
 
-			Map<String, String> translations = loadTranslations(messagePath);
+			Map<String, String> translations = loadTranslations(
+				plugin,
+				resourcePath,
+				messagePath
+			);
 
 			store.registerAll(locale, translations);
 		}
@@ -64,31 +74,98 @@ public final class TNexusMessages {
 		return new TNexusMessages(store);
 	}
 
-	private static Map<String, String> loadTranslations(Path messagePath) {
+	private static Map<String, String> loadTranslations(
+		TNexusPlugin plugin,
+		String resourcePath,
+		Path messagePath
+	) {
+		Map<String, String> translations = loadDefaultTranslations(plugin, resourcePath);
+
+		validateTranslations(translations, resourcePath);
+
+		if (Files.exists(messagePath)) {
+			try (FileConfig config = FileConfig.of(messagePath)) {
+				config.load();
+				flattenTranslations(config, "tnexus", translations, messagePath);
+			}
+		}
+
+		return Map.copyOf(translations);
+	}
+
+	private static Map<String, String> loadDefaultTranslations(
+		TNexusPlugin plugin,
+		String resourcePath
+	) {
+		InputStream resource = plugin.getResource(resourcePath);
+
+		if (resource == null) {
+			throw new IllegalArgumentException("Bundled translation resource was not found: " + resourcePath);
+		}
+
 		Map<String, String> translations = new HashMap<>();
 
-		try (FileConfig config = FileConfig.of(messagePath)) {
-			config.load();
+		try (
+			resource;
+			InputStreamReader reader = new InputStreamReader(
+				resource,
+				StandardCharsets.UTF_8
+			);
+		) {
+			UnmodifiableConfig config = new TomlParser().parse(reader);
 
-			for (UnmodifiableConfig.Entry entry : config.entrySet()) {
-				Object rawValue = entry.getRawValue();
+			flattenTranslations(
+				config,
+				"tnexus",
+				translations,
+				Path.of(resourcePath)
+			);
+		} catch (IOException exception) {
+			throw new IllegalStateException(
+				"Failed to read bundled translation source: " + resourcePath,
+				exception
+			);
+		}
 
-				if (!(rawValue instanceof String message)) {
-					throw new IllegalArgumentException(
-						"Translation value must be a string: " + entry.getKey() + " in " + messagePath
-					);
-				}
+		return translations;
+	}
 
-				translations.put(entry.getKey(), message);
-			}
+	private static void flattenTranslations(
+		UnmodifiableConfig config,
+		String prefix,
+		Map<String, String> translations,
+		Path source
+	) {
+		for (UnmodifiableConfig.Entry entry : config.entrySet()) {
+			String key = prefix + "." + entry.getKey();
+			Object value = entry.getRawValue();
 
-			if (translations.isEmpty()) {
-				throw new IllegalArgumentException(
-					"Translation file is empty: " + messagePath
+			if (value instanceof UnmodifiableConfig category) {
+				flattenTranslations(
+					category,
+					key,
+					translations,
+					source
 				);
+				continue;
 			}
 
-			return Map.copyOf(translations);
+			if (!(value instanceof String message)) {
+				throw new IllegalArgumentException("Translation value must be a string: " + key + " in " + source);
+			}
+
+			translations.put(key, message);
+		}
+	}
+
+	private static void validateTranslations(
+		Map<String, String> translations,
+		String resourcePath
+	) {
+		for (MessageKey messageKey : MessageKey.values()) {
+			if (!translations.containsKey(messageKey.key())) {
+				throw new IllegalArgumentException("Missing translation key: " + messageKey.key() + " in " + resourcePath);
+			}
 		}
 	}
 
